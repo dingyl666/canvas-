@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title></title>
+		<style type="text/css">
+			*{
+				margin: 0;
+				padding: 0;
+			}
+			body{
+				text-align: center;
+			}
+			canvas{
+				margin-top: 50px;
+				box-shadow: 0 0 10px #333;
+			}
+		</style>
+	</head>
+	<body>
+		
+		<canvas id="canvas" width="800" height="600"></canvas>
+		<script type="text/javascript">
+			/*
+			贪吃蛇步骤：
+			画蛇
+			让蛇动起来
+			随即投放食物
+			吃食物
+			边缘检测，判断游戏是否结束
+			*/
+			let canvas = document.getElementById('canvas')
+			if(canvas.getContext){
+				let ctx = canvas.getContext('2d')
+				let number = 0;//分数
+				let isEateFood = false;
+				
+				//创建画蛇头对象
+				function Rect(x,y,width,height,color){
+					this.x = x;
+					this.y = y;
+					this.height = height;
+					this.width = width;
+					this.color = color;
+				}
+				Rect.prototype.rDraw = function(){
+					ctx.beginPath();
+					ctx.fillStyle = this.color;
+					ctx.fillRect(this.x,this.y,this.width,this.height);
+					ctx.strokeRect(this.x,this.y,this.width,this.height);
+				}
+				// let rect = new Rect(400-20,300-20,40,40,'red')
+				// rect.rDraw();
+				
+				//创建画蛇对象
+				function Snake(){
+					//蛇头
+					this.head = new Rect(canvas.width/2-40,canvas.height/2-20,40,40,'red');
+					
+					//画蛇身
+					this.body = new Array();
+					
+					let x = this.head.x-40;
+					let y = this.head.y;
+					for(var i = 0;i<3;i++){
+						let rect = new Rect(x,y,40,40,'gray');
+						this.body.push(rect);
+						x-=40;
+					}
+					this.direction = 2;
+				}
+				
+				Snake.prototype.sDraw = function(){
+					//绘制蛇头
+					this.head.rDraw();
+					//绘制蛇身
+					for(var i = 0;i<this.body.length;i++){
+						this.body[i].rDraw();
+					}
+				}
+				
+				Snake.prototype.move = function(){
+					//给body加头
+					let rect = new Rect(this.head.x,this.head.y,this.head.width,
+					this.head.height,'gray');
+					this.body.splice(0,0,rect);
+					
+					//去尾
+					if(isEateFood==false){
+						this.body.pop();
+					}else{
+						number++
+						isEateFood = false;						
+					}
+					
+					//判断是否吃到食物决定是否去尾
+					switch(this.direction){
+						case 0:{
+							this.head.x -=this.head.width;
+							break;
+						}
+						case 1:{
+							this.head.y -=this.head.width;
+							break;
+						}
+						case 2:{
+							this.head.x +=this.head.width;
+							break;
+						}
+						case 3:{
+							this.head.y +=this.head.width;
+							break;
+						}
+					}
+					
+					//判断撞墙
+					if(this.head.x >= canvas.width || 
+					this.head.x<0 || this.head.y >= canvas.height ||
+					this.head.y<0){
+						clearInterval(timer);
+						timer = null;
+						alert('游戏结束！你的得分是:'+number+'。')
+					}
+					//判断蛇头和蛇身是否重合
+					for(var i = 0;i<snake.body.length;i++){
+						if(isRectHit(this.head,this.body[i])){
+							clearInterval(timer);
+							timer = null;
+							alert('游戏结束！你的得分是:'+number+'。')
+						}
+					}
+				}
+				let snake = new Snake();
+				snake.sDraw();
+				
+				let food = randFood();
+				
+				
+				//动起来
+				function animate(){
+					ctx.clearRect(0,0,canvas.width,canvas.height);
+					food.rDraw();	
+					snake.move();
+					snake.sDraw();	
+						
+					if(isRectHit(snake.head,food)){
+						isEateFood = true;
+						food = randFood();
+					}		
+				}
+				var timer = setInterval(animate,200)
+				
+				//键盘事件
+				document.onkeydown = function(ev){
+					let e = ev ||window.event
+					switch(e.keyCode){
+						case 37:{
+							snake.direction = 0;			
+							break;
+						}
+						case 38:{
+							snake.direction = 1;
+							break;
+						}
+						case 39:{
+							snake.direction = 2;
+							break;
+						}
+						case 40:{
+							snake.direction = 3;
+							break;
+						}
+					}
+				}
+				
+				//投放食物
+				
+				function randFood(){
+					let isInSnake = true;//如果食物随机投到在蛇身上
+					while(isInSnake){
+						
+						let x = getRandom(0,(canvas.width-40)/40)*40;
+						let y = getRandom(0,(canvas.height-40)/40)*40;
+						
+						//食物矩形
+						var rect = new Rect(x,y,40,40,'blue')
+						
+						//判断食物是否与蛇头重叠
+						if(isRectHit(snake.head,rect)){
+							isInSnake = true;
+							continue;
+						}
+						isInSnake = false
+						
+						//判断食物是否与蛇身重叠
+						for(var i = 0;i<snake.body.length;i++){
+							if(isRectHit(snake.body[i],rect)){
+								isInSnake = true;
+								break;
+							}
+						}
+					}
+					return rect;
+				}
+				
+				//碰撞检测
+				function isRectHit(rect1,rect2){
+					let minX1 = rect1.x;
+					let minX2 = rect2.x;
+					let minY1 = rect1.y;
+					let minY2 = rect2.y;
+					
+					let maxX1 = rect1.x + rect1.width;
+					let maxX2 = rect2.x + rect2.width;
+					let maxY1 = rect1.y + rect1.height;
+					let maxY2 = rect2.y + rect2.height;
+					
+					let minX = Math.max(minX1,minX2);
+					let minY = Math.max(minY1,minY2);
+					let maxX = Math.min(maxX1,maxX2);
+					let maxY = Math.min(maxY1,maxY2);
+					
+					if(minX<maxX && minY<maxY){
+						return true;
+					}else{
+						return false;
+					}
+					
+				}
+				
+				//获取随机数
+				function getRandom(min,max){
+					return Math.round(Math.random()*(max-min)+min)
+				}
+				
+			}
+		</script>
+	</body>
+</html>
